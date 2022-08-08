@@ -12,7 +12,7 @@
 #include <SDL2/SDL_mixer.h>
 
 void windowResizeCallback(struct PikaVolley *pikaVolley);
-void loop(struct PikaVolley *v, int *running, int *lastTick);
+void loop(struct PikaVolley *v, int *running);
 void processEvent(struct PikaVolley *v, int *running);
 void playSoundEffects(struct PikaVolley *v);
 
@@ -112,7 +112,14 @@ void StartPikaVolley(struct PikaVolley *v)
 {
 	int running = 1;
 	int lastTick = 0;
-	loop(v, &running, &lastTick);
+	while (running) {
+		int current = SDL_GetTicks();
+		if (current - lastTick < 1000 / FPS) {
+			continue;
+		}
+		lastTick = current;
+		loop(v, &running);
+	}
 }
 
 void runIntro(struct PikaVolley *v)
@@ -410,18 +417,10 @@ void runScenes(struct PikaVolley *v)
 	SDL_RenderPresent(v->view->renderer);
 }
 
-void loop(struct PikaVolley *v, int *running, int *lastTick)
+void loop(struct PikaVolley *v, int *running)
 {
-	while (*running) {
-		int current = SDL_GetTicks();
-		if (current - *lastTick < 1000 / FPS) {
-			continue;
-		}
-		*lastTick = current;
-
-		processEvent(v, running);
-		runScenes(v);
-	}
+	processEvent(v, running);
+	runScenes(v);
 }
 
 void processKeys(SDL_Keycode k, struct PikaKeyboard **keyboards, int isDown)

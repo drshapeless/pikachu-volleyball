@@ -1,2 +1,6 @@
 *.o
 /src/c/pikachu-volleyball
+/src/c/pikachu-volleyball.wasm
+/src/c/pikachu-volleyball.data
+/src/c/pikachu-volleyball.html
+/src/c/pikachu-volleyball.js

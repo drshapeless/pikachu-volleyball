@@ -7,7 +7,7 @@
 SDL_Texture *NewPikaSpriteSheetTexture(SDL_Renderer *renderer)
 {
 	/* Load image. */
-	SDL_Surface *surface = IMG_Load("../assets/images/sprite_sheet.png");
+	SDL_Surface *surface = IMG_Load("assets/images/sprite_sheet.png");
 	if (surface == NULL) {
 		printf("Error loading image: %s\n", IMG_GetError());
 		return NULL;

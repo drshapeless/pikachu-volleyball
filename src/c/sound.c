@@ -4,48 +4,48 @@
 
 struct PikaAudio *NewPikaAudio(void)
 {
-	Mix_Music *bgm = Mix_LoadMUS("../assets/sounds/bgm.wav");
+	Mix_Music *bgm = Mix_LoadMUS("assets/sounds/bgm.wav");
 	if (bgm == NULL) {
 		printf("Failed to load beat music! SDL_mixer Error: %s\n",
 		       Mix_GetError());
 		return NULL;
 	}
 
-	Mix_Chunk *pipikachu = Mix_LoadWAV("../assets/sounds/WAVE140_1.wav");
+	Mix_Chunk *pipikachu = Mix_LoadWAV("assets/sounds/WAVE140_1.wav");
 	if (pipikachu == NULL) {
 		printf("Failed to load pipikachu sound effect! SDL_mixer Error: %s\n",
 		       Mix_GetError());
 		return NULL;
 	}
 
-	Mix_Chunk *pika = Mix_LoadWAV("../assets/sounds/WAVE141_1.wav");
+	Mix_Chunk *pika = Mix_LoadWAV("assets/sounds/WAVE141_1.wav");
 	if (pika == NULL) {
 		printf("Failed to load pika sound effect! SDL_mixer Error: %s\n",
 		       Mix_GetError());
 		return NULL;
 	}
 
-	Mix_Chunk *chu = Mix_LoadWAV("../assets/sounds/WAVE142_1.wav");
+	Mix_Chunk *chu = Mix_LoadWAV("assets/sounds/WAVE142_1.wav");
 	if (chu == NULL) {
 		printf("Failed to load chu sound effect! SDL_mixer Error: %s\n",
 		       Mix_GetError());
 		return NULL;
 	}
 
-	Mix_Chunk *pi = Mix_LoadWAV("../assets/sounds/WAVE143_1.wav");
+	Mix_Chunk *pi = Mix_LoadWAV("assets/sounds/WAVE143_1.wav");
 	if (pi == NULL) {
 		printf("Failed to load pi sound effect! SDL_mixer Error: %s\n",
 		       Mix_GetError());
 		return NULL;
 	}
 
-	Mix_Chunk *pikachu = Mix_LoadWAV("../assets/sounds/WAVE144_1.wav");
+	Mix_Chunk *pikachu = Mix_LoadWAV("assets/sounds/WAVE144_1.wav");
 	if (pi == NULL) {
 		printf("Failed to load pikachu sound effect! SDL_mixer Error: %s\n",
 		       Mix_GetError());
 		return NULL;
 	}
-	Mix_Chunk *powerhit = Mix_LoadWAV("../assets/sounds/WAVE145_1.wav");
+	Mix_Chunk *powerhit = Mix_LoadWAV("assets/sounds/WAVE145_1.wav");
 	if (powerhit == NULL) {
 		printf("Failed to load powerhit sound effect! SDL_mixer Error: %s\n",
 		       Mix_GetError());
@@ -53,7 +53,7 @@ struct PikaAudio *NewPikaAudio(void)
 	}
 
 	Mix_Chunk *ballTouchesGround =
-		Mix_LoadWAV("../assets/sounds/WAVE146_1.wav");
+		Mix_LoadWAV("assets/sounds/WAVE146_1.wav");
 	if (ballTouchesGround == NULL) {
 		printf("Failed to load ballTouchesGround sound effect! SDL_mixer Error: %s\n",
 		       Mix_GetError());

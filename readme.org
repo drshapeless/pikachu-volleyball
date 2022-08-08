@@ -12,6 +12,7 @@ method is rewritten from scratch.
 - SDL2
 - SDL2_image
 - SDL2_mixer
+- emscripten (if you want to compile into wasm)
 
 * Build and run yourself
 #+begin_src shell
@@ -23,6 +24,32 @@ method is rewritten from scratch.
 
 Since I am using clang as the compiler in the makefile, if you don't
 have clang installed or prefer gcc instead, change it yourself.
+
+* Build the wasm version
+Make sure you have emscripten installed.
+#+begin_src shell
+  make wasm
+#+end_src
+
+It will generate 4 files.
+- pikachu-volleyball.html
+- pikachu-volleyball.js
+- pikachu-volleyball.wasm
+- pikachu-volleyball.data
+
+
+To run locally on your computer, just open the html file with your
+browser.
+
+To host the game, you may put it behind nginx on your web server.
+
+* Limitation of wasm
+The wasm version is surrounded with the emscripten logo. You may edit
+the html file to customize the page layout yourself.
+
+I haven't implement any window resize utility in the wasm. It requires
+a bit of JavaScript. If you want a bigger canvas, you may directly
+edit the inline css of the html file.
 
 * Why
 I was playing Pikachu Volleyball with friends at work, and found the
@@ -52,8 +79,25 @@ smooth playing experience. Some minor features from the original game
 have not been implemented due to this reason, e.g. slow motion after
 score.
 
+* Controls
+You may refer to config.h for more details.
+
+Player 1:
+- Left     : D
+- Right    : G
+- Up       : R
+- Down     : F
+- Powerhit : Z
+
+
+Player 2:
+- Left     : L
+- Right    : '
+- Up       : P
+- Down     : ;
+- Powerhit : M
+
 * Future improvements
-- It will support wasm, soon. (trust me)
 - A better AI, the current AI somehow sucks.
 - Nightmare difficulty of AI with more powerful punch and faster
   moving speed. (Not likely to happen, too many things have to be

@@ -43,4 +43,6 @@ struct PikaVolley *NewPikaVolley(void);
 void DestroyPikaVolley(struct PikaVolley *volley);
 void StartPikaVolley(struct PikaVolley *volley);
 
+void loop(struct PikaVolley *v, int *running);
+
 #endif /* PIKAVOLLEY_H */
