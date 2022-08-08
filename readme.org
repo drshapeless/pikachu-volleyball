@@ -1,0 +1,60 @@
+#+title: Pikachu Volleyball
+
+This is an implementation of Pikachu Volleyball in pure C and SDL2.
+
+Most of the game logic is a direct port of [[https://github.com/gorisanson/pikachu-volleyball][gorisanson'
+pikachu-volleyball]] from JavaScript to C.
+
+Although the game physics part are mostly the same. The rendering
+method is rewritten from scratch.
+
+* Dependencies
+- SDL2
+- SDL2_image
+- SDL2_mixer
+
+* Build and run yourself
+#+begin_src shell
+  git clone https://github.com/drshapeless/pikachu-volleyball.git
+  cd pikachu-volleyball/src/c
+  make
+  ./pikachu-volleyball
+#+end_src
+
+Since I am using clang as the compiler in the makefile, if you don't
+have clang installed or prefer gcc instead, change it yourself.
+
+* Why
+I was playing Pikachu Volleyball with friends at work, and found the
+game really fun. But the JavaScript nature of the game makes it
+sometimes laggy when playing on the ancient hardwares in my
+workplace.
+
+Therefore, I decided to make a C version of it to see whether the
+performance would be better. I plan to port it to wasm to play it in
+the browser.
+
+Originally, I was writing it in C++. But the constructor and
+destructor hell were driving me crazy. And such a simple game does not
+need that features in C++.
+
+* Features
+All the constants are in the config.h. If you want to mess around
+with the constants, you can modify and recompile.
+
+Since the game was originally for a screen size of 432 x 304. A lot of
+game logic and rendering relies on these magic numbers. I made
+flexible window size available by converting real canvas dimensions on
+the fly. You may check it out in view.c.
+
+I don't really care about remaking the original game, I just want a
+smooth playing experience. Some minor features from the original game
+have not been implemented due to this reason, e.g. slow motion after
+score.
+
+* Future improvements
+- It will support wasm, soon. (trust me)
+- A better AI, the current AI somehow sucks.
+- Nightmare difficulty of AI with more powerful punch and faster
+  moving speed. (Not likely to happen, too many things have to be
+  rewritten.)
