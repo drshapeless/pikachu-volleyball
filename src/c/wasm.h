@@ -3,8 +3,6 @@
 
 #include "pikavolley.h"
 
-#include <emscripten.h>
-
 struct Args {
 	struct PikaVolley *v;
 	int running;

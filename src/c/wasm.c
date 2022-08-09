@@ -2,6 +2,8 @@
 #include "pikavolley.h"
 #include "config.h"
 
+#include <emscripten.h>
+
 void wasmLoop(void *args_)
 {
 	struct Args *args = (struct Args *)args_;
