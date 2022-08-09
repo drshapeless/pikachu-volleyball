@@ -6,6 +6,7 @@
 #include "userinput.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -15,6 +16,7 @@ void windowResizeCallback(struct PikaVolley *pikaVolley);
 void loop(struct PikaVolley *v, int *running);
 void processEvent(struct PikaVolley *v, int *running);
 void playSoundEffects(struct PikaVolley *v);
+void restart(struct PikaVolley *v);
 
 int initializeView()
 {
@@ -81,7 +83,7 @@ struct PikaVolley *NewPikaVolley(void)
 	v->keyboards = keyboards;
 	v->inputs = inputs;
 
-	v->scene = 0;
+	v->scene = INTRO_SCENE;
 	v->gameEnded = 0;
 	v->roundEnded = 0;
 	v->isPlayer2Serve = 0;
@@ -281,6 +283,18 @@ void runRound(struct PikaVolley *v)
 	DrawBall(v->view, v->game->ball);
 	DrawScore(v->view, v->p1Score, v->p2Score);
 
+	if (v->gameEnded) {
+		DrawGameEndMessage(v->view);
+		v->view->frameCounter++;
+		if (v->view->frameCounter >= FRAME_TOTAL_GAME_END ||
+		    (v->view->frameCounter >= 70 && pressedPowerHit)) {
+			v->view->frameCounter = 0;
+			v->scene = INTRO_SCENE;
+			restart(v);
+		}
+		return;
+	}
+
 	if (isBallTouchingGround && v->roundEnded == 0 && v->gameEnded == 0) {
 		if (v->game->ball->punchEffectX < GROUND_HALF_WIDTH) {
 			v->isPlayer2Serve = 1;
@@ -306,21 +320,10 @@ void runRound(struct PikaVolley *v)
 		v->roundEnded = 1;
 	}
 
-	if (v->gameEnded) {
-		DrawGameEndMessage(v->view);
-		v->view->frameCounter++;
-		if (v->view->frameCounter >= FRAME_TOTAL_GAME_END ||
-		    (v->view->frameCounter >= 70 && pressedPowerHit)) {
-			v->view->frameCounter = 0;
-			v->scene = INTRO_SCENE;
-		}
-		return;
-	}
-
-	if (v->roundEnded) {
-		v->scene = AFTER_END_OF_ROUND_SCENE;
-		/* Reset frameCounter here? */
+	if (v->roundEnded && v->gameEnded == 0) {
 		v->view->frameCounter = 0;
+
+		v->scene = AFTER_END_OF_ROUND_SCENE;
 		return;
 	}
 
@@ -570,4 +573,19 @@ void playSoundEffects(struct PikaVolley *v)
 	playPikachuSound(v->audio, v->game->p1);
 	playPikachuSound(v->audio, v->game->p2);
 	playBallSound(v->audio, v->game->ball);
+}
+
+void restart(struct PikaVolley *v)
+{
+	v->gameEnded = 0;
+	v->roundEnded = 0;
+	v->isPlayer2Serve = 0;
+	v->p1Score = 0;
+	v->p2Score = 0;
+	v->selectedWithWho = 0;
+	v->noInputFrameCounter = 0;
+
+	InitializePikachu(v->game->p1);
+	InitializePikachu(v->game->p2);
+	InitializePokeball(v->game->ball, v->isPlayer2Serve);
 }
