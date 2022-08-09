@@ -473,10 +473,6 @@ void processEvent(struct PikaVolley *v, int *running)
 			}
 			break;
 		case SDL_KEYDOWN:
-			if (e.key.keysym.sym == SDLK_ESCAPE) {
-				*running = 0;
-				break;
-			}
 			processKeys(e.key.keysym.sym, v->keyboards, 1);
 			break;
 		case SDL_KEYUP:
