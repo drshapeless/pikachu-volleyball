@@ -35,7 +35,10 @@ wave.o: wave.h
 cloud.o: cloud.h
 
 wasm: $(WASM_SOURCE)
-	emcc $(WASM_SOURCE) -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_MIXER=2  -s SDL2_IMAGE_FORMATS='["png"]' -o  pikachu-volleyball.html --preload-file assets/ --shell-file template.html
+	emcc $(WASM_SOURCE) -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_MIXER=1  -s SDL2_IMAGE_FORMATS='["png"]' -o  pikachu-volleyball.html --preload-file assets/ --shell-file template.html
+
+wasm-test: $(WASM_SOURCE)
+	emcc $(WASM_SOURCE) -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_MIXER=1  -s SDL2_IMAGE_FORMATS='["png"]' -o  pikachu-volleyball.html --preload-file assets/
 
 .PHONY: clean wasm-clean
 clean:
