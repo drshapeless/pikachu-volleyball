@@ -501,6 +501,17 @@ int getFrameNumberForPlayerAnimatedSprite(int state, int frameNumber)
 void DrawPikachu(struct PikaView *v, struct Pikachu *p)
 {
 	const SDL_Rect *pikachuRect = PikachuRect(p->state, p->frameNumber);
+	if (pikachuRect == NULL) {
+		/* In some weird case, this function will call a
+		 * non-existing state and frame number.
+		 *
+		 * Resulting in segmentation fault.
+		 *
+		 * For now, just skip the frame. */
+
+		/* TODO: Fix. */
+		return;
+	}
 	SDL_Rect src = *pikachuRect;
 	SDL_Rect des = src;
 	des.x = p->x - src.w / 2;
