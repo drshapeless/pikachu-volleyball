@@ -268,15 +268,6 @@ void runRound(struct PikaVolley *v)
 		return;
 	}
 
-	/* Defer checking of roundEnded to next frame.
-	 * Thus omitting the check of gameEnded == 0 */
-	if (v->roundEnded) {
-		v->scene = AFTER_END_OF_ROUND_SCENE;
-		/* Reset frameCounter here? */
-		v->view->frameCounter = 0;
-		return;
-	}
-
 	KeyboardToUserInput(v->keyboards[0], v->inputs[0]);
 	KeyboardToUserInput(v->keyboards[1], v->inputs[1]);
 
@@ -289,17 +280,6 @@ void runRound(struct PikaVolley *v)
 	DrawPikachu(v->view, v->game->p2);
 	DrawBall(v->view, v->game->ball);
 	DrawScore(v->view, v->p1Score, v->p2Score);
-
-	if (v->gameEnded) {
-		DrawGameEndMessage(v->view);
-		v->view->frameCounter++;
-		if (v->view->frameCounter >= FRAME_TOTAL_GAME_END ||
-		    (v->view->frameCounter >= 70 && pressedPowerHit)) {
-			v->view->frameCounter = 0;
-			v->scene = INTRO_SCENE;
-		}
-		return;
-	}
 
 	if (isBallTouchingGround && v->roundEnded == 0 && v->gameEnded == 0) {
 		if (v->game->ball->punchEffectX < GROUND_HALF_WIDTH) {
@@ -324,6 +304,24 @@ void runRound(struct PikaVolley *v)
 			}
 		}
 		v->roundEnded = 1;
+	}
+
+	if (v->gameEnded) {
+		DrawGameEndMessage(v->view);
+		v->view->frameCounter++;
+		if (v->view->frameCounter >= FRAME_TOTAL_GAME_END ||
+		    (v->view->frameCounter >= 70 && pressedPowerHit)) {
+			v->view->frameCounter = 0;
+			v->scene = INTRO_SCENE;
+		}
+		return;
+	}
+
+	if (v->roundEnded) {
+		v->scene = AFTER_END_OF_ROUND_SCENE;
+		/* Reset frameCounter here? */
+		v->view->frameCounter = 0;
+		return;
 	}
 
 	v->view->frameCounter++;
