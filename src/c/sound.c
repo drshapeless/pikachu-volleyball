@@ -1,10 +1,11 @@
 #include "sound.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 struct PikaAudio *NewPikaAudio(void)
 {
-	Mix_Music *bgm = Mix_LoadMUS("assets/sounds/bgm.wav");
+	Mix_Music *bgm = Mix_LoadMUS("assets/sounds/bgm.mp3");
 	if (bgm == NULL) {
 		printf("Failed to load beat music! SDL_mixer Error: %s\n",
 		       Mix_GetError());
