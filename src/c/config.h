@@ -22,8 +22,11 @@ static const int PLAYER_INITIAL_OFFSET		= 16;
 static const int BALL_INITIAL_OFFSET		= 56;
 static const int PLAYER_NORMAL_VELOCITY		= 6;
 static const int PLAYER_DIVING_VELOCITY		= 6;
+static const int PLAYER_DIVING_UPWARD_VELOCITY  = 5;
 static const int PLAYER_JUMP_VELOCITY		= 16;
 static const int PLAYER_LYING_DOWN_DURATION	= 3;
+
+static const int SHADOW_Y_COORD                 = 273;
 
 /* Render constants */
 static const int FPS                      = 30;
