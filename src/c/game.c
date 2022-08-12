@@ -5,637 +5,378 @@
 
 #include <stdlib.h>
 
-int processCollisionBetweenBallAndWorldAndSetBallPosition(struct Pokeball *ball);
-int isCollisionBetweenBallAndPlayerHappened(struct Pokeball *b, int playerX,
-                                            int playerY);
-void calculateExpectedLandingPointXFor(struct Pokeball *ball);
-void processPlayerMovementAndSetPlayerPosition(struct Pikachu *player,
-                                               struct PikaUserInput *userInput,
-                                               struct Pokeball *ball);
-int decideWhetherInputPowerHit(struct Pikachu *player, struct Pokeball *ball,
-                               struct Pikachu *otherPlayer,
-                               struct PikaUserInput *userInput);
-int expectedLandingPointXWhenPowerHit(int userInputXDirection,
-                                      int userInputYDirection,
-                                      struct Pokeball *ball);
-void processCollisionBetweenBallAndPlayer(struct Pokeball *b, int playerX,
-                                          struct PikaUserInput *i,
-                                          int playerState);
-void letComputerDecideUserInput(struct Pikachu *player, struct Pokeball *ball,
-                                struct Pikachu *otherPlayer,
-                                struct PikaUserInput *userInput);
+int processBall(struct Pokeball *ball);
+void setBallPreviousPosition(struct Pokeball *ball);
+void setBallNextPosition(struct Pokeball *ball);
+void setBallRotation(struct Pokeball *ball);
+int touchGround(struct Pokeball *ball);
+int touchCeiling(struct Pokeball *ball);
+int touchWall(struct Pokeball *ball);
+int touchNet(struct Pokeball *ball);
+void movePlayer(struct Pikachu *p, struct PikaUserInput *i);
+int isBallTouchPlayer(struct Pokeball *ball, int playerX, int playerY);
+void ballPlayerCollision(struct Pokeball *b, int playerX,
+			 struct PikaUserInput *i, int playerState);
 
 struct PikaGame *NewPikaGame(int isP1Computer, int isP2Computer)
 {
-        struct PikaGame *g = malloc(sizeof(struct PikaGame));
-        g->p1 = NewPikachu(0, isP1Computer);
-        g->p2 = NewPikachu(1, isP2Computer);
-        /* p1 always serve first. */
-        g->ball = NewPokeball(0);
+	struct PikaGame *g = malloc(sizeof(struct PikaGame));
+	g->p1 = NewPikachu(0, isP1Computer);
+	g->p2 = NewPikachu(1, isP2Computer);
+	/* p1 always serve first. */
+	g->ball = NewPokeball(0);
 
-        return g;
+	return g;
 }
 
 void DestroyPikaGame(struct PikaGame *g)
 {
-        DestroyPikachu(g->p1);
-        DestroyPikachu(g->p2);
-        DestroyPokeball(g->ball);
-        free(g);
+	DestroyPikachu(g->p1);
+	DestroyPikachu(g->p2);
+	DestroyPokeball(g->ball);
+	free(g);
 }
 
-int PikaGameTick(struct PikaGame *g, struct PikaUserInput *i1,
-                 struct PikaUserInput *i2)
+int PikaGameTick(struct PikaGame *game, struct PikaUserInput *p1Input,
+		 struct PikaUserInput *p2Input)
 {
-        int isBallTouchingGround =
-                processCollisionBetweenBallAndWorldAndSetBallPosition(g->ball);
-        if (isBallTouchingGround) {
-                return 1;
-        }
+	/* Returns whether the ball touches the ground. */
+	if (processBall(game->ball)) {
+		return 1;
+	}
 
-        if (g->p1->isComputer) {
-                letComputerDecideUserInput(g->p1, g->ball, g->p2, i1);
-        }
-        if (g->p2->isComputer) {
-                letComputerDecideUserInput(g->p2, g->ball, g->p1, i2);
-        }
-        processPlayerMovementAndSetPlayerPosition(g->p1, i1, g->ball);
-        processPlayerMovementAndSetPlayerPosition(g->p2, i2, g->ball);
+	movePlayer(game->p1, p1Input);
+	movePlayer(game->p2, p2Input);
+	game->p1->isCollisionWithBallHappened = 0;
+	game->p2->isCollisionWithBallHappened = 0;
+	if (isBallTouchPlayer(game->ball, game->p1->x, game->p1->y)) {
+		ballPlayerCollision(game->ball, game->p1->x, p1Input,
+				    game->p1->state);
+		game->p1->isCollisionWithBallHappened = 1;
+	} else if (isBallTouchPlayer(game->ball, game->p2->x, game->p2->y)) {
+		ballPlayerCollision(game->ball, game->p2->x, p2Input,
+				    game->p2->state);
+		game->p2->isCollisionWithBallHappened = 1;
+	}
 
-        if (isCollisionBetweenBallAndPlayerHappened(g->ball, g->p1->x,
-                                                    g->p1->y)) {
-                if (g->p1->isCollisionWithBallHappened == 0) {
-                        processCollisionBetweenBallAndPlayer(g->ball, g->p1->x,
-                                                             i1, g->p1->state);
-                        g->p1->isCollisionWithBallHappened = 1;
-                }
-        } else {
-                g->p1->isCollisionWithBallHappened = 0;
-        }
-
-        if (isCollisionBetweenBallAndPlayerHappened(g->ball, g->p2->x,
-                                                    g->p2->y)) {
-                if (g->p2->isCollisionWithBallHappened == 0) {
-                        processCollisionBetweenBallAndPlayer(g->ball, g->p2->x,
-                                                             i2, g->p2->state);
-                        g->p2->isCollisionWithBallHappened = 1;
-                }
-        } else {
-                g->p2->isCollisionWithBallHappened = 0;
-        }
-
-        return isBallTouchingGround;
+	return 0;
 }
 
-int isCollisionBetweenBallAndPlayerHappened(struct Pokeball *b, int playerX,
-                                            int playerY)
+int processBall(struct Pokeball *b)
 {
-        int diff = b->x - playerX;
-        if (abs(diff) <= PLAYER_HALF_LENGTH) {
-                diff = b->y - playerY;
-                if (abs(diff) <= PLAYER_HALF_LENGTH) {
-                        return 1;
-                }
-        }
+	setBallPreviousPosition(b);
+	setBallRotation(b);
+	if (touchGround(b)) {
+		/* If the ball touches the ground, ignore everything
+		 * else. */
+		return 1;
+	} else if (!(touchCeiling(b) || touchWall(b) || touchNet(b))) {
+		setBallNextPosition(b);
+	}
 
-        return 0;
+	/* Gravity */
+	b->yVelocity += 1;
+
+	return 0;
 }
 
-void processCollisionBetweenBallAndWall(struct Pokeball *b, int futureX)
+void setBallPreviousPosition(struct Pokeball *b)
 {
-        /* The original author make a weird mistake.
-         * (futureBallX > GROUND_WIDTH) instead of below.
-
-         * gorisanson said editing it will introduce an infinite loop
-         * issue.
-         *
-         * Infinite loop is real. */
-
-        /* If the ball hits the wall, reverse the x-velocity. */
-        if (futureX < BALL_RADIUS || futureX > GROUND_WIDTH - BALL_RADIUS) {
-                b->xVelocity = -b->xVelocity;
-        }
+	b->previousPreviousX = b->previousX;
+	b->previousPreviousY = b->previousY;
+	b->previousX = b->x;
+	b->previousY = b->y;
 }
 
-void processCollisionBetweenBallAndCeiling(struct Pokeball *b, int futureY)
+void setBallRotation(struct Pokeball *b)
 {
-        /* If the ball hits the ceiling, let gravity do the work. */
-        if (futureY < BALL_RADIUS) {
-                b->yVelocity = 1;
-        }
+	/* This is all about rendering. */
+	int futureFineRotation = b->fineRotation + (b->xVelocity / 2);
+	if (futureFineRotation < 0) {
+		futureFineRotation += 50;
+	} else if (futureFineRotation > 50) {
+		futureFineRotation += -50;
+	}
+	b->fineRotation = futureFineRotation;
+	b->rotation = b->fineRotation / 10;
 }
 
-void processCollisionBetweenBallAndNet(struct Pokeball *b, int futureX)
+void setBallNextPosition(struct Pokeball *b)
 {
-        /* If the ball hit the net. */
-        if (abs(futureX - GROUND_HALF_WIDTH) < NET_PILLAR_HALF_WIDTH &&
-            b->y > NET_PILLAR_TOP_TOP_Y_COORD) {
-                if (b->y <= NET_PILLAR_TOP_BOTTOM_Y_COORD && b->yVelocity > 0) {
-                        /* If the ball hit the top part,
-                         * and is falling,
-                         * bounce up. */
-                        b->yVelocity = -b->yVelocity;
-                } else {
-                        /* If the ball hit the other part of the
-                         * net, bounce back. */
-                        b->xVelocity = -b->xVelocity;
-                }
-        }
+	b->x += b->xVelocity;
+	b->y += b->yVelocity;
 }
 
-int processCollisionBetweenBallAndGround(struct Pokeball *b, int futureY)
+int touchGround(struct Pokeball *b)
 {
-        /* If the ball hit the ground, bounce up. */
-        if (futureY > BALL_TOUCHING_GROUND_Y_COORD) {
-                b->yVelocity = -b->yVelocity;
-                return 1;
-        }
-        return 0;
+	/* If the ball touches the ground, return 1 and
+	 * set the ball to the next position. */
+
+	if (b->y + b->yVelocity > BALL_TOUCHING_GROUND_Y_COORD) {
+		b->x += b->xVelocity;
+		b->y = BALL_TOUCHING_GROUND_Y_COORD;
+		b->yVelocity = -b->yVelocity;
+
+		b->soundBallTouchesGround = 1;
+		b->punchEffectX = b->x;
+		b->punchEffectRadius = BALL_RADIUS;
+		b->punchEffectY = BALL_TOUCHING_GROUND_Y_COORD + BALL_RADIUS;
+
+		return 1;
+	}
+	return 0;
 }
 
-int processCollisionBetweenBallAndWorldAndSetBallPosition(struct Pokeball *b)
+int touchCeiling(struct Pokeball *b)
 {
-        b->previousPreviousX = b->previousX;
-        b->previousPreviousY = b->previousY;
-        b->previousX = b->x;
-        b->previousY = b->y;
+	/* If the ball touches the ceiling, return 1 and
+	 * set the ball to the next position. */
 
-        /* I don't fucking know what a fine rotation means. */
-        int futureFineRotation = b->fineRotation + (b->xVelocity / 2);
-        if (futureFineRotation < 0) {
-                futureFineRotation += 50;
-        } else if (futureFineRotation > 50) {
-                futureFineRotation += -50;
-        }
-        b->fineRotation = futureFineRotation;
-        b->rotation = b->fineRotation / 10;
+	if (b->y + b->yVelocity < BALL_RADIUS) {
+		b->x += b->xVelocity;
+		b->y = BALL_RADIUS;
+		b->yVelocity = 1;
+		return 1;
+	}
 
-        int futureBallX = b->x + b->xVelocity;
-        int futureBallY = b->y + b->yVelocity;
-
-        processCollisionBetweenBallAndWall(b, futureBallX);
-
-        processCollisionBetweenBallAndCeiling(b, futureBallY);
-
-        processCollisionBetweenBallAndNet(b, futureBallX);
-
-        if (processCollisionBetweenBallAndGround(b, futureBallY)) {
-                b->soundBallTouchesGround = 1;
-                b->punchEffectX = b->x;
-                b->y = BALL_TOUCHING_GROUND_Y_COORD;
-                b->punchEffectRadius = BALL_RADIUS;
-                b->punchEffectY = BALL_TOUCHING_GROUND_Y_COORD + BALL_RADIUS;
-                return 1;
-        }
-
-        b->x = futureBallX;
-        b->y = futureBallY;
-        /* Gravity acceleration. */
-        b->yVelocity += 1;
-        return 0;
+	return 0;
 }
 
-void calculateExpectedLandingPointXFor(struct Pokeball *ball)
+int touchWall(struct Pokeball *b)
 {
-        struct Pokeball b = *ball;
-
-        /* Infinite loop is real, fuck that. */
-        int loopCounter = 0;
-        while (1) {
-                loopCounter++;
-                int futureX = b.xVelocity + b.x;
-                int futureY = b.yVelocity + b.y;
-                processCollisionBetweenBallAndWall(&b, futureX);
-
-                processCollisionBetweenBallAndCeiling(&b, futureY);
-
-                processCollisionBetweenBallAndNet(&b, futureX);
-
-                if (processCollisionBetweenBallAndGround(&b, futureY) ||
-                    loopCounter >= INFINITE_LOOP_LIMIT) {
-                        break;
-                }
-                b.x = futureX;
-                b.y = futureY;
-        }
-        ball->expectedLandingPointX = b.x;
+	int futureX = b->x + b->xVelocity;
+	if (futureX < BALL_RADIUS) {
+		b->x = BALL_RADIUS;
+		b->y += b->yVelocity;
+		b->xVelocity = -b->xVelocity;
+		return 1;
+	} else if (futureX > GROUND_WIDTH - BALL_RADIUS) {
+		b->x = GROUND_WIDTH - BALL_RADIUS;
+		b->y += b->yVelocity;
+		b->xVelocity = -b->xVelocity;
+		return 1;
+	}
+	return 0;
 }
 
-void setPlayerJump(struct Pikachu *p, struct PikaUserInput *i)
+int touchNet(struct Pokeball *b)
 {
-        if (i->yDirection == -1 && p->y == PLAYER_TOUCHING_GROUND_Y_COORD) {
-                p->yVelocity = -PLAYER_JUMP_VELOCITY;
-                p->state = JUMPING_PIKACHU;
-                p->frameNumber = 0;
-                p->soundChu = 1;
-        }
+	int futureX = b->x + b->xVelocity;
+	int futureY = b->y + b->yVelocity;
+
+	if (futureY > NET_PILLAR_TOP_TOP_Y_COORD &&
+	    futureX > GROUND_HALF_WIDTH - NET_PILLAR_HALF_WIDTH &&
+	    futureX < GROUND_HALF_WIDTH + NET_PILLAR_HALF_WIDTH) {
+		if (b->y < NET_PILLAR_TOP_TOP_Y_COORD) {
+			/* Hit from top side. */
+			b->y = NET_PILLAR_TOP_TOP_Y_COORD;
+			b->x += b->xVelocity;
+			b->yVelocity = -b->yVelocity;
+			return 1;
+		} else if (b->x < GROUND_HALF_WIDTH - NET_PILLAR_HALF_WIDTH) {
+			/* Hit from left side. */
+			b->x = GROUND_HALF_WIDTH - NET_PILLAR_HALF_WIDTH;
+			b->y += b->yVelocity;
+			b->xVelocity = -b->xVelocity;
+			return 1;
+		} else if (b->x > GROUND_HALF_WIDTH + NET_PILLAR_HALF_WIDTH) {
+			/* Hit from the right side. */
+			b->x = GROUND_HALF_WIDTH + NET_PILLAR_HALF_WIDTH;
+			b->y += b->yVelocity;
+			b->xVelocity = -b->xVelocity;
+			return 1;
+		}
+	}
+
+	return 0;
 }
 
 void processGameEndFrameFor(struct Pikachu *p)
 {
-        if (p->gameEnded && p->frameNumber < 4) {
-                p->delayBeforeNextFrame += 1;
-                if (p->delayBeforeNextFrame > 4) {
-                        p->delayBeforeNextFrame = 0;
-                        p->frameNumber += 1;
-                }
-        }
+	if (p->gameEnded && p->frameNumber < 4) {
+		p->delayBeforeNextFrame += 1;
+		if (p->delayBeforeNextFrame > 4) {
+			p->delayBeforeNextFrame = 0;
+			p->frameNumber += 1;
+		}
+	}
 }
 
-void processPlayerGravity(struct Pikachu *p)
+void movePlayer(struct Pikachu *p, struct PikaUserInput *i)
 {
-        /* Gravity */
-        int futurePlayerY = p->y + p->yVelocity;
-        p->y = futurePlayerY;
-        /* If futurePlayerY == PLAYER_TOUCHING_GROUND_Y_COORD,
-                 * do nothing. */
-        if (futurePlayerY < PLAYER_TOUCHING_GROUND_Y_COORD) {
-                /* Player is falling */
-                p->yVelocity += 1;
+	/* If pikachu is lying down, return. */
+	if (p->state == LYING_DOWN_PIKACHU) {
+		p->lyingDownDurationLeft -= 1;
+		if (p->lyingDownDurationLeft < -1) {
+			p->state = NORMAL_PIKACHU;
+		}
+		return;
+	}
 
-        } else if (futurePlayerY > PLAYER_TOUCHING_GROUND_Y_COORD) {
-                /* Player is landing */
-                p->yVelocity = 0;
-                p->y = PLAYER_TOUCHING_GROUND_Y_COORD;
-                p->frameNumber = 0;
+	/* Velocity X */
+	int vx = 0;
+	if (p->state < DIVING_PIKACHU) {
+		vx = i->xDirection * PLAYER_NORMAL_VELOCITY;
+	} else {
+		vx = p->divingDirection * PLAYER_DIVING_VELOCITY;
+	}
 
-                if (p->state == DIVING_PIKACHU) {
-                        p->state = LYING_DOWN_PIKACHU;
-                        p->frameNumber = 0;
-                        p->lyingDownDurationLeft = PLAYER_LYING_DOWN_DURATION;
-                } else {
-                        p->state = NORMAL_PIKACHU;
-                }
-        }
+	/* Future player x position. */
+	int fpx = p->x + vx;
+	p->x = fpx;
+	if (p->isPlayer2) {
+		if (fpx < GROUND_HALF_WIDTH + PLAYER_HALF_LENGTH) {
+			p->x = GROUND_HALF_WIDTH + PLAYER_HALF_LENGTH;
+		} else if (fpx >= GROUND_WIDTH - PLAYER_HALF_LENGTH) {
+			p->x = GROUND_WIDTH - PLAYER_HALF_LENGTH;
+		}
+	} else {
+		if (fpx < PLAYER_HALF_LENGTH) {
+			p->x = PLAYER_HALF_LENGTH;
+		} else if (fpx >= GROUND_HALF_WIDTH - PLAYER_HALF_LENGTH) {
+			p->x = GROUND_HALF_WIDTH - PLAYER_HALF_LENGTH;
+		}
+	}
+
+	/* Jump */
+	if (p->state < DIVING_PIKACHU && i->yDirection == -1 &&
+	    p->y == PLAYER_TOUCHING_GROUND_Y_COORD) {
+		p->yVelocity = -PLAYER_JUMP_VELOCITY;
+		p->state = JUMPING_PIKACHU;
+		p->frameNumber = 0;
+		p->soundChu = 1;
+	}
+
+	/* Gravity */
+	int fpy = p->y + p->yVelocity;
+	p->y = fpy;
+	if (fpy < PLAYER_TOUCHING_GROUND_Y_COORD) {
+		p->yVelocity += 1;
+	} else if (fpy > PLAYER_TOUCHING_GROUND_Y_COORD) {
+		p->yVelocity = 0;
+		p->y = PLAYER_TOUCHING_GROUND_Y_COORD;
+		p->frameNumber = 0;
+		if (p->state == DIVING_PIKACHU) {
+			p->state = LYING_DOWN_PIKACHU;
+			p->frameNumber = 0;
+			p->lyingDownDurationLeft = PLAYER_LYING_DOWN_DURATION;
+		} else {
+			p->state = NORMAL_PIKACHU;
+		}
+	}
+
+	/* Diving or powerhit */
+	if (i->powerHit == 1) {
+		if (p->state == JUMPING_PIKACHU) {
+			p->delayBeforeNextFrame = 5;
+			p->frameNumber = 0;
+			p->state = JUMPING_AND_POWERHITTING_PIKACHU;
+			p->soundPika = 1;
+		} else if (p->state == NORMAL_PIKACHU && i->xDirection != 0) {
+			p->state = DIVING_PIKACHU;
+			p->frameNumber = 0;
+			p->divingDirection = i->xDirection;
+			p->yVelocity = PLAYER_DIVING_UPWARD_VELOCITY;
+			p->soundChu = 1;
+		}
+	}
+
+	if (p->state == JUMPING_PIKACHU) {
+		p->frameNumber = (p->frameNumber + 1) % 3;
+
+	} else if (p->state == JUMPING_AND_POWERHITTING_PIKACHU) {
+		if (p->delayBeforeNextFrame < 1) {
+			p->frameNumber += 1;
+			if (p->frameNumber > 4) {
+				p->frameNumber = 0;
+				p->state = JUMPING_PIKACHU;
+			}
+		} else {
+			p->delayBeforeNextFrame -= 1;
+		}
+	} else if (p->state == NORMAL_PIKACHU) {
+		p->delayBeforeNextFrame += 1;
+		if (p->delayBeforeNextFrame > 3) {
+			p->delayBeforeNextFrame = 0;
+			int futureFrameNumber =
+				p->frameNumber +
+				p->normalStatusArmSwingDirection;
+			if (futureFrameNumber < 0 || futureFrameNumber > 4) {
+				p->normalStatusArmSwingDirection =
+					-p->normalStatusArmSwingDirection;
+			}
+			p->frameNumber += p->normalStatusArmSwingDirection;
+		}
+	}
+
+	if (p->gameEnded) {
+		if (p->state == NORMAL_PIKACHU) {
+			if (p->isWinner) {
+				p->state = WIN_PIKACHU;
+				p->soundPipikachu = 1;
+			} else {
+				p->state = LOSE_PIKACHU;
+			}
+			p->delayBeforeNextFrame = 0;
+			p->frameNumber = 0;
+		}
+		processGameEndFrameFor(p);
+	}
 }
 
-void processPlayerMovementAndSetPlayerPosition(struct Pikachu *p,
-                                               struct PikaUserInput *i,
-                                               struct Pokeball *b)
+int isBallTouchPlayer(struct Pokeball *b, int playerX, int playerY)
 {
-        /* If pikachu is lying down, return. */
-        if (p->state == LYING_DOWN_PIKACHU) {
-                p->lyingDownDurationLeft -= 1;
-                if (p->lyingDownDurationLeft < -1) {
-                        p->state = NORMAL_PIKACHU;
-                }
-                return;
-        }
+	int diff = b->x - playerX;
+	if (abs(diff) <= PLAYER_HALF_LENGTH) {
+		diff = b->y - playerY;
+		if (abs(diff) <= PLAYER_HALF_LENGTH) {
+			return 1;
+		}
+	}
 
-        int playerVelocityX = 0;
-        if (p->state < WIN_PIKACHU) {
-                if (p->state < DIVING_PIKACHU) {
-                        playerVelocityX =
-                                i->xDirection * PLAYER_NORMAL_VELOCITY;
-                } else {
-                        playerVelocityX =
-                                p->divingDirection * PLAYER_DIVING_VELOCITY;
-                }
-        }
-
-        /* x-direction */
-        int futurePlayerX = p->x + playerVelocityX;
-        p->x = futurePlayerX;
-        if (p->isPlayer2) {
-                if (futurePlayerX < GROUND_HALF_WIDTH + PLAYER_HALF_LENGTH) {
-                        p->x = GROUND_HALF_WIDTH + PLAYER_HALF_LENGTH;
-                } else if (futurePlayerX >= GROUND_WIDTH - PLAYER_HALF_LENGTH) {
-                        p->x = GROUND_WIDTH - PLAYER_HALF_LENGTH;
-                }
-        } else {
-                if (futurePlayerX < PLAYER_HALF_LENGTH) {
-                        p->x = PLAYER_HALF_LENGTH;
-                } else if (futurePlayerX >=
-                           GROUND_HALF_WIDTH - PLAYER_HALF_LENGTH) {
-                        p->x = GROUND_HALF_WIDTH - PLAYER_HALF_LENGTH;
-                }
-        }
-
-        /* Jump */
-        if (p->state < DIVING_PIKACHU && i->yDirection == -1 &&
-            p->y == PLAYER_TOUCHING_GROUND_Y_COORD) {
-                p->yVelocity = -PLAYER_JUMP_VELOCITY;
-                p->state = JUMPING_PIKACHU;
-                p->frameNumber = 0;
-                p->soundChu = 1;
-        }
-
-        /* Gravity */
-        int futurePlayerY = p->y + p->yVelocity;
-        p->y = futurePlayerY;
-        if (futurePlayerY < PLAYER_TOUCHING_GROUND_Y_COORD) {
-                p->yVelocity += 1;
-        } else if (futurePlayerY > PLAYER_TOUCHING_GROUND_Y_COORD) {
-                p->yVelocity = 0;
-                p->y = PLAYER_TOUCHING_GROUND_Y_COORD;
-                p->frameNumber = 0;
-                if (p->state == DIVING_PIKACHU) {
-                        p->state = LYING_DOWN_PIKACHU;
-                        p->frameNumber = 0;
-                        p->lyingDownDurationLeft = PLAYER_LYING_DOWN_DURATION;
-                } else {
-                        p->state = NORMAL_PIKACHU;
-                }
-        }
-
-        /* Diving or powerhit */
-        if (i->powerHit == 1) {
-                if (p->state == JUMPING_PIKACHU) {
-                        p->delayBeforeNextFrame = 5;
-                        p->frameNumber = 0;
-                        p->state = JUMPING_AND_POWERHITTING_PIKACHU;
-                        p->soundPika = 1;
-                } else if (p->state == NORMAL_PIKACHU && i->xDirection != 0) {
-                        p->state = DIVING_PIKACHU;
-                        p->frameNumber = 0;
-                        p->divingDirection = i->xDirection;
-                        p->yVelocity = PLAYER_DIVING_UPWARD_VELOCITY;
-                        p->soundChu = 1;
-                }
-        }
-
-        if (p->state == JUMPING_PIKACHU) {
-                p->frameNumber = (p->frameNumber + 1) % 3;
-
-        } else if (p->state == JUMPING_AND_POWERHITTING_PIKACHU) {
-                if (p->delayBeforeNextFrame < 1) {
-                        p->frameNumber += 1;
-                        if (p->frameNumber > 4) {
-                                p->frameNumber = 0;
-                                p->state = JUMPING_PIKACHU;
-                        }
-                } else {
-                        p->delayBeforeNextFrame -= 1;
-                }
-        } else if (p->state == NORMAL_PIKACHU) {
-                p->delayBeforeNextFrame += 1;
-                if (p->delayBeforeNextFrame > 3) {
-                        p->delayBeforeNextFrame = 0;
-                        int futureFrameNumber =
-                                p->frameNumber +
-                                p->normalStatusArmSwingDirection;
-                        if (futureFrameNumber < 0 || futureFrameNumber > 4) {
-                                p->normalStatusArmSwingDirection =
-                                        -p->normalStatusArmSwingDirection;
-                        }
-                        p->frameNumber += p->normalStatusArmSwingDirection;
-                }
-        }
-
-        if (p->gameEnded) {
-                if (p->state == NORMAL_PIKACHU) {
-                        if (p->isWinner) {
-                                p->state = WIN_PIKACHU;
-                                p->soundPipikachu = 1;
-                        } else {
-                                p->state = LOSE_PIKACHU;
-                        }
-                        p->delayBeforeNextFrame = 0;
-                        p->frameNumber = 0;
-                }
-                processGameEndFrameFor(p);
-        }
+	return 0;
 }
 
-void processCollisionBetweenBallAndPlayer(struct Pokeball *b, int playerX,
-                                          struct PikaUserInput *i,
-                                          int playerState)
+void ballPlayerCollision(struct Pokeball *b, int playerX,
+			 struct PikaUserInput *i, int playerState)
 {
-        /* This function is directly copied. */
+	/* playerX is pikachu's x position */
+	/* if collision occur, */
+	/* greater the x position difference between pika and ball, */
+	/* greater the x velocity of the ball. */
+	if (b->x < playerX) {
+		b->xVelocity = -(abs(b->x - playerX) / 3);
+	} else if (b->x > playerX) {
+		b->xVelocity = abs(b->x - playerX) / 3;
+	}
 
-        // playerX is pikachu's x position
-        // if collision occur,
-        // greater the x position difference between pika and ball,
-        // greater the x velocity of the ball.
-        if (b->x < playerX) {
-                b->xVelocity = -(abs(b->x - playerX) / 3);
-        } else if (b->x > playerX) {
-                b->xVelocity = abs(b->x - playerX) / 3;
-        }
+	/* If ball velocity x is 0, randomly choose one of -1, 0, 1. */
+	if (b->xVelocity == 0) {
+		b->xVelocity = (rand() % 3) - 1;
+	}
 
-        // If ball velocity x is 0, randomly choose one of -1, 0, 1.
-        if (b->xVelocity == 0) {
-                b->xVelocity = (rand() % 3) - 1;
-        }
+	int ballAbsYVelocity = abs(b->yVelocity);
+	b->yVelocity = -ballAbsYVelocity;
 
-        int ballAbsYVelocity = abs(b->yVelocity);
-        b->yVelocity = -ballAbsYVelocity;
+	if (ballAbsYVelocity < 15) {
+		b->yVelocity = -15;
+	}
 
-        if (ballAbsYVelocity < 15) {
-                b->yVelocity = -15;
-        }
+	/* If player is jumping and power hitting */
+	if (playerState == JUMPING_AND_POWERHITTING_PIKACHU) {
+		if (b->x < GROUND_HALF_WIDTH) {
+			b->xVelocity = (abs(i->xDirection) + 1) * 10;
+		} else {
+			b->xVelocity = -(abs(i->xDirection) + 1) * 10;
+		}
+		b->punchEffectX = b->x;
+		b->punchEffectY = b->y;
 
-        // If player is jumping and power hitting
-        if (playerState == JUMPING_AND_POWERHITTING_PIKACHU) {
-                if (b->x < GROUND_HALF_WIDTH) {
-                        b->xVelocity = (abs(i->xDirection) + 1) * 10;
-                } else {
-                        b->xVelocity = -(abs(i->xDirection) + 1) * 10;
-                }
-                b->punchEffectX = b->x;
-                b->punchEffectY = b->y;
-
-                b->yVelocity = abs(b->yVelocity) * i->yDirection * 2;
-                b->punchEffectRadius = BALL_RADIUS;
-                b->soundPowerHit = 1;
-                b->isPowerHit = 1;
-        } else {
-                b->isPowerHit = 0;
-        }
-
-        /* Omit calculate landing point. */
-}
-
-/* Computer related functions. */
-/* TODO: Write a better computer. */
-void letComputerDecideUserInput(struct Pikachu *player, struct Pokeball *ball,
-                                struct Pikachu *otherPlayer,
-                                struct PikaUserInput *userInput)
-{
-        /* Resetting user input */
-        userInput->xDirection = 0;
-        userInput->yDirection = 0;
-        userInput->powerHit = 0;
-
-        /* Calculate here */
-        calculateExpectedLandingPointXFor(ball);
-
-        int virtualExpectedLandingPointX = ball->expectedLandingPointX;
-        if (abs(ball->x - player->x) > 100 &&
-            abs(ball->xVelocity) < player->computerBoldness + 5) {
-                int leftBoundary = player->isPlayer2 * GROUND_HALF_WIDTH;
-                if ((ball->expectedLandingPointX <= leftBoundary ||
-                     ball->expectedLandingPointX >=
-                             player->isPlayer2 * GROUND_WIDTH +
-                                     GROUND_HALF_WIDTH) &&
-                    player->computerWhereToStandBy == 0) {
-                        // If conditions above met, the computer
-                        // estimates the proper location to stay as
-                        // the middle point of their side
-                        virtualExpectedLandingPointX =
-                                leftBoundary + (GROUND_HALF_WIDTH / 2);
-                }
-        }
-        if (abs(virtualExpectedLandingPointX - player->x) >
-            player->computerBoldness + 8) {
-                if (player->x < virtualExpectedLandingPointX) {
-                        userInput->xDirection = 1;
-                } else {
-                        userInput->xDirection = -1;
-                }
-        } else if (rand() % 20 == 0) {
-                player->computerWhereToStandBy = rand() % 2;
-        }
-
-        if (player->state == NORMAL_PIKACHU) {
-                if (abs(ball->xVelocity) < player->computerBoldness + 3 &&
-                    abs(ball->x - player->x) < PLAYER_HALF_LENGTH &&
-                    ball->y > -36 &&
-                    ball->y < 10 * player->computerBoldness + 84 &&
-                    ball->yVelocity > 0) {
-                        userInput->yDirection = -1;
-                }
-
-                int leftBoundary = player->isPlayer2 * GROUND_HALF_WIDTH;
-                int rightBoundary = (player->isPlayer2 + 1) * GROUND_HALF_WIDTH;
-                if (ball->expectedLandingPointX > leftBoundary &&
-                    ball->expectedLandingPointX < rightBoundary &&
-                    abs(ball->x - player->x) >
-                            player->computerBoldness * 5 + PLAYER_LENGTH &&
-                    ball->x > leftBoundary && ball->x < rightBoundary &&
-                    ball->y > 174) {
-                        // If conditions above met, the computer decides to dive!
-                        userInput->powerHit = 1;
-                        if (player->x < ball->x) {
-                                userInput->xDirection = 1;
-                        } else {
-                                userInput->xDirection = -1;
-                        }
-                }
-        } else if (player->state == JUMPING_PIKACHU ||
-                   player->state == JUMPING_AND_POWERHITTING_PIKACHU) {
-                if (abs(ball->x - player->x) > 8) {
-                        if (player->x < ball->x) {
-                                userInput->xDirection = 1;
-                        } else {
-                                userInput->xDirection = -1;
-                        }
-                }
-                if (abs(ball->x - player->x) < 48 &&
-                    abs(ball->y - player->y) < 48) {
-                        int willInputPowerHit = decideWhetherInputPowerHit(
-                                player, ball, otherPlayer, userInput);
-                        if (willInputPowerHit) {
-                                userInput->powerHit = 1;
-                                if (abs(otherPlayer->x - player->x) < 80 &&
-                                    userInput->yDirection != -1) {
-                                        userInput->yDirection = -1;
-                                }
-                        }
-                }
-        }
-}
-
-int decideWhetherInputPowerHit(struct Pikachu *player, struct Pokeball *ball,
-                               struct Pikachu *otherPlayer,
-                               struct PikaUserInput *userInput)
-{
-        if (rand() % 2 == 0) {
-                for (int xDirection = 1; xDirection > -1; xDirection--) {
-                        for (int yDirection = -1; yDirection < 2;
-                             yDirection++) {
-                                int expectedLandingPointX =
-                                        expectedLandingPointXWhenPowerHit(
-                                                xDirection, yDirection, ball);
-                                if ((expectedLandingPointX <=
-                                             player->isPlayer2 *
-                                                     GROUND_HALF_WIDTH ||
-                                     expectedLandingPointX >=
-                                             player->isPlayer2 * GROUND_WIDTH +
-                                                     GROUND_HALF_WIDTH) &&
-                                    abs(expectedLandingPointX -
-                                        otherPlayer->x) > PLAYER_LENGTH) {
-                                        userInput->xDirection = xDirection;
-                                        userInput->yDirection = yDirection;
-                                        return 1;
-                                }
-                        }
-                }
-        } else {
-                for (int xDirection = 1; xDirection > -1; xDirection--) {
-                        for (int yDirection = 1; yDirection > -2;
-                             yDirection--) {
-                                int expectedLandingPointX =
-                                        expectedLandingPointXWhenPowerHit(
-                                                xDirection, yDirection, ball);
-                                if ((expectedLandingPointX <=
-                                             player->isPlayer2 *
-                                                     GROUND_HALF_WIDTH ||
-                                     expectedLandingPointX >=
-                                             player->isPlayer2 * GROUND_WIDTH +
-                                                     GROUND_HALF_WIDTH) &&
-                                    abs(expectedLandingPointX -
-                                        otherPlayer->x) > PLAYER_LENGTH) {
-                                        userInput->xDirection = xDirection;
-                                        userInput->yDirection = yDirection;
-                                        return 1;
-                                }
-                        }
-                }
-        }
-        return 0;
-}
-
-int expectedLandingPointXWhenPowerHit(int userInputXDirection,
-                                      int userInputYDirection,
-                                      struct Pokeball *ball)
-{
-        struct Pokeball copyBall = *ball;
-
-        if (copyBall.x < GROUND_HALF_WIDTH) {
-                copyBall.xVelocity = (abs(userInputXDirection) + 1) * 10;
-        } else {
-                copyBall.xVelocity = -(abs(userInputXDirection) + 1) * 10;
-        }
-        copyBall.yVelocity = abs(copyBall.yVelocity) * userInputYDirection * 2;
-
-        int loopCounter = 0;
-        while (1) {
-                loopCounter++;
-
-                int futureCopyBallX = copyBall.x + copyBall.xVelocity;
-                if (futureCopyBallX < BALL_RADIUS ||
-                    futureCopyBallX > GROUND_WIDTH) {
-                        copyBall.xVelocity = -copyBall.xVelocity;
-                }
-                if (copyBall.y + copyBall.yVelocity < 0) {
-                        copyBall.yVelocity = 1;
-                }
-                if (abs(copyBall.x - GROUND_HALF_WIDTH) <
-                            NET_PILLAR_HALF_WIDTH &&
-                    copyBall.y > NET_PILLAR_TOP_TOP_Y_COORD) {
-                        if (copyBall.y <= NET_PILLAR_TOP_BOTTOM_Y_COORD) {
-                                if (copyBall.yVelocity > 0) {
-                                        copyBall.yVelocity =
-                                                -copyBall.yVelocity;
-                                }
-                        } else {
-                                if (copyBall.x < GROUND_HALF_WIDTH) {
-                                        copyBall.xVelocity =
-                                                -abs(copyBall.xVelocity);
-                                } else {
-                                        copyBall.xVelocity =
-                                                abs(copyBall.xVelocity);
-                                }
-                        }
-                }
-
-                copyBall.y = copyBall.y + copyBall.yVelocity;
-                if (copyBall.y > BALL_TOUCHING_GROUND_Y_COORD ||
-                    loopCounter >= INFINITE_LOOP_LIMIT) {
-                        return copyBall.x;
-                }
-                copyBall.x += copyBall.xVelocity;
-                copyBall.yVelocity += 1;
-        }
+		b->yVelocity = abs(b->yVelocity) * i->yDirection * 2;
+		b->punchEffectRadius = BALL_RADIUS;
+		b->soundPowerHit = 1;
+		b->isPowerHit = 1;
+	} else {
+		b->isPowerHit = 0;
+	}
 }
