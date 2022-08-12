@@ -6,10 +6,9 @@
 void InitializePikachu(struct Pikachu *p)
 {
 	if (p->isPlayer2) {
-		p->x = GROUND_WIDTH - PLAYER_INITIAL_OFFSET -
-			PLAYER_HALF_LENGTH;
+		p->x = GROUND_WIDTH - PLAYER_HALF_LENGTH;
 	} else {
-		p->x = PLAYER_INITIAL_OFFSET + PLAYER_HALF_LENGTH;
+		p->x = PLAYER_HALF_LENGTH;
 	}
 
 	p->y = PLAYER_TOUCHING_GROUND_Y_COORD;
