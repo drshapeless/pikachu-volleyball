@@ -276,7 +276,7 @@ void movePlayer(struct Pikachu *p, struct PikaUserInput *i)
 			p->state = DIVING_PIKACHU;
 			p->frameNumber = 0;
 			p->divingDirection = i->xDirection;
-			p->yVelocity = PLAYER_DIVING_UPWARD_VELOCITY;
+			p->yVelocity = -PLAYER_DIVING_UPWARD_VELOCITY;
 			p->soundChu = 1;
 		}
 	}
