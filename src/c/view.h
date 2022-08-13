@@ -40,6 +40,7 @@ void DrawBackground(struct PikaView *v);
 void DrawPikachu(struct PikaView *v, struct Pikachu *p);
 void DrawBall(struct PikaView *v, struct Pokeball *b);
 void DrawScore(struct PikaView *v, int p1Score, int p2Score);
+void DrawGameStartMessage(struct PikaView *v);
 void DrawReadyMessage(struct PikaView *v);
 void DrawGameEndMessage(struct PikaView *v);
 void DrawBlackCover(struct PikaView *v, int alpha);
